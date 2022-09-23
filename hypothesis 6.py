@@ -22,6 +22,8 @@ def vadersentimentanalysis(tweet):
     return sentiment
 
 dataset['sentiment'] = dataset['text'].apply(vadersentimentanalysis)
+mean = pd.concat([dataset, dataset["sentiment"].apply(pd.Series)], axis=1)
+
 
 split_cols = pd.concat([dataset, dataset["sentiment"].apply(pd.Series)], axis=1)
 split_cols = split_cols.drop(columns="sentiment")
@@ -43,23 +45,66 @@ topic_12 = split_cols[split_cols.topic == "12.0"]
 #Run T tests on VADER data of each segment, comparing classes of users
 segments = [topic_0,topic_1,topic_2,topic_3,topic_4,topic_5,topic_6,topic_7,topic_8,topic_9,topic_10,topic_11,topic_12]
 
-t_test = pd.DataFrame()
+kruskal_broad_results = pd.DataFrame()
+i=0
+while i< len(segments):
+    kruskal_temp = pd.DataFrame()
+    statistic, pvalue = stats.kruskal(segments[i]['compound'][segments[i]['class'] == 'human'],
+                                      segments[i]['compound'][segments[i]['class'] == 'simple'],
+                                      segments[i]['compound'][segments[i]['class'] == 'sophisticated'])
+    kruskal_temp = pd.DataFrame([str(segments[i].iloc[0,6]), str(statistic), str(pvalue)]).transpose()
+    kruskal_broad_results = kruskal_broad_results.append(kruskal_temp)
+    i +=1
+kruskal_broad_results.to_csv('kruskal_wallis-tests-broad-topics.csv')
 
+dunn_test = pd.DataFrame()
 i=0
 while i < len(segments):
-    t_test_temp = pd.DataFrame()
-    test = rp.ttest(group1= segments[i]['compound'][segments[i]['class'] == 'human'], group1_name= "human",
-        group2= segments[i]['compound'][segments[i]['class'] == 'simple'], group2_name= "simple")
-    t_test_temp = t_test_temp.append(test)
-    test = rp.ttest(group1= segments[i]['compound'][segments[i]['class'] == 'human'], group1_name= "human",
-        group2= segments[i]['compound'][segments[i]['class'] == 'sophisticated'], group2_name= "sophisticated")
-    t_test_temp = t_test_temp.append(test)
-    test = rp.ttest(group1= segments[i]['compound'][segments[i]['class'] == 'simple'], group1_name= "simple",
-        group2= segments[i]['compound'][segments[i]['class'] == 'sophisticated'], group2_name= "sophisticated")
-    t_test_temp = t_test_temp.append(test)
-    t_test_temp = t_test_temp.set_index(segments[i].iloc[0:39,0])
-    t_test = t_test.append(t_test_temp)
+    x = kruskal_broad_results.iloc[i,2]
+    dunn_temp = pd.DataFrame()
+    if float(x) < 0.05:
+        #replace all these with Dunn
+        import scikit_posthocs as sp
+        # using the posthoc_dunn() function
+        data = [(segments[i]['compound'][segments[i]['class'] == 'human']),
+                (segments[i]['compound'][segments[i]['class'] == 'simple']),
+                (segments[i]['compound'][segments[i]['class'] == 'sophisticated'])]
 
-    i = i+1
-t_test.to_csv('topic_sentiment_t-tests.csv')
+        p_values = sp.posthoc_dunn(data, p_adjust='holm')
+        p_values = pd.DataFrame(["topic", (kruskal_broad_results.iloc[i,0]),kruskal_broad_results.iloc[i,0],kruskal_broad_results.iloc[i,0]]).transpose().append(p_values)
+        dunn_test = dunn_test.append(p_values)
+        print(i, "was tested pairwise")
+        i += 1
+        continue
+    else:
+        i += 1
+dunn_test.to_csv('dunn-test-topics.csv')
+
+(mean[mean["class"] == "human"]['compound']).describe()
+(mean[mean["class"] == "simple"]['compound']).describe()
+(mean[mean["class"] == "sophisticated"]['compound']).describe()
+
+(mean[mean["class"] == "human"]['compound']).median()
+(mean[mean["class"] == "simple"]['compound']).median()
+(mean[mean["class"] == "sophisticated"]['compound']).median()
+
+i = 0
+descriptives_table = pd.DataFrame()
+while i < len(segments):
+    print("topic " + str(i))
+    # print(segments[i][segments[i]["class"] == "human"]["compound"].mean())
+    # print(segments[i][segments[i]["class"] == "simple"]["compound"].mean())
+    # print(segments[i][segments[i]["class"] == "sophisticated"]["compound"].mean())
+    descriptives_h = pd.DataFrame(segments[i][segments[i]["class"] == "human"]["compound"].describe()).transpose()
+    descriptives_table = descriptives_table.append(descriptives_h)
+    descriptives_bb = pd.DataFrame(segments[i][segments[i]["class"] == "simple"]["compound"].describe()).transpose()
+    descriptives_table = descriptives_table.append(descriptives_bb)
+    descriptives_sb = pd.DataFrame(segments[i][segments[i]["class"] == "sophisticated"]["compound"].describe()).transpose()
+    descriptives_table = descriptives_table.append(descriptives_sb)
+    i+=1
+descriptives_table.to_csv("topic_sentiment_descriptives.csv")
+
+
+
+
 

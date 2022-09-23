@@ -117,65 +117,82 @@ bots = ["simple","sophisticated"]
 
 i = 0
 while (i< len(human_used_counts)):
-    hashtag_in_question = hashtags_with_more_than_15_occurrences[i] #pick a hashtag from the more than 50 occurances list CHANGE 0 TO i FOR LOOP LATER
-    hashtag_in_question_occurrences = (more_than[more_than['hashtag'] == hashtag_in_question]).reset_index(drop=True) #save all occurances of picked hashtag in a new dataframe?
+hashtag_in_question = hashtags_with_more_than_15_occurrences[i] #pick a hashtag from the more than 50 occurances list CHANGE 0 TO i FOR LOOP LATER
+hashtag_in_question_occurrences = (more_than[more_than['hashtag'] == hashtag_in_question]).reset_index(drop=True) #save all occurances of picked hashtag in a new dataframe?
 
 # #changing time to somethin python can read
-    hashtag_in_question_occurrences['posted_at'] = pd.to_datetime(hashtag_in_question_occurrences['posted_at']) #sets value to datetime index
-    both_used = pd.DataFrame(hashtag_in_question_occurrences["posted_at"]).reset_index(drop=True) #makes a copy of the dates for later
+hashtag_in_question_occurrences['posted_at'] = pd.to_datetime(hashtag_in_question_occurrences['posted_at']) #sets value to datetime index
+both_used = pd.DataFrame(hashtag_in_question_occurrences["posted_at"]).reset_index(drop=True) #makes a copy of the dates for later
 
 #Split bot and human hashtag usages?
-    human_used = hashtag_in_question_occurrences[hashtag_in_question_occurrences['class']=='human'] #save all rows with 'human' in class column separately
-    human_used = pd.concat([both_used, human_used], axis = 1, keys= "posted_at", ignore_index=True) #Combine the human_used data with the timeline from both (because human only will be missing time segments)
-    human_used.iloc[:,0] = pd.to_datetime(human_used.iloc[:,0]) #convert the time column to the datetime data type
-    human_used.set_index(human_used.iloc[:,0], inplace=True) #replace the row names with the datetime made previously
-    human_used.set_axis(['timestamp','hashtag','timeagain','class'],axis=1,inplace=True) #set column names for easier graphing
+human_used = hashtag_in_question_occurrences[hashtag_in_question_occurrences['class']=='human'] #save all rows with 'human' in class column separately
+human_used = pd.concat([both_used, human_used], axis = 1, keys= "posted_at", ignore_index=True) #Combine the human_used data with the timeline from both (because human only will be missing time segments)
+human_used.iloc[:,0] = pd.to_datetime(human_used.iloc[:,0]) #convert the time column to the datetime data type
+human_used.set_index(human_used.iloc[:,0], inplace=True) #replace the row names with the datetime made previously
+human_used.set_axis(['timestamp','hashtag','timeagain','class'],axis=1,inplace=True) #set column names for easier graphing
 
-    bot_used = hashtag_in_question_occurrences[hashtag_in_question_occurrences['class'].isin(bots)]
-    bot_used = pd.concat([both_used, bot_used], axis = 1, keys= "posted_at", ignore_index=True)
-    bot_used.iloc[:,0] = pd.to_datetime(bot_used.iloc[:,0])
-    bot_used.set_index(bot_used.iloc[:,0], inplace=True)
-    bot_used.set_axis(['timestamp','hashtag','timeagain','class'],axis=1,inplace=True)
+bot_used = hashtag_in_question_occurrences[hashtag_in_question_occurrences['class'].isin(bots)]
+bot_used = pd.concat([both_used, bot_used], axis = 1, keys= "posted_at", ignore_index=True)
+bot_used.iloc[:,0] = pd.to_datetime(bot_used.iloc[:,0])
+bot_used.set_index(bot_used.iloc[:,0], inplace=True)
+bot_used.set_axis(['timestamp','hashtag','timeagain','class'],axis=1,inplace=True)
 
-    #chaning type of big lists index post merge with bot and human usages, inorder to support graphing later
-    hashtag_in_question_occurrences.set_index('posted_at', inplace=True, drop= False) #sets datetime as index (row names) ---- works despite error
+#chaning type of big lists index post merge with bot and human usages, inorder to support graphing later
+#sets datetime as index (row names) ---- works despite error
+text = pd.read_csv('textual_content.csv')
 
-    #constructing segments to be used on x axis
-    over15min_timeline = hashtag_in_question_occurrences.groupby(pd.Grouper(freq='15T')).count() #group all occurences by segments of 20mins (the useful part is grouping our overall timeline) | .count() isn't neccessary here?
+humans = text[text['class'] == "human"]
+bot = text[text['class'].isin(bots)]
 
-    over15min_human = human_used.groupby(pd.Grouper(freq='15T')).count() #group all human used hashtag occurances by segments of (# before 't') mins
-    over15min_human['cum_sum'] = over15min_human['hashtag'].cumsum()
-    # over15min_human = over15min_human.loc[over15min_timeline_start:over15min_timeline_end]
+text = pd.DataFrame(text["created_at"])
+humans = pd.concat([text, humans], axis = 1, keys= "created_at", ignore_index=True)
+bot = pd.concat([text, bot], axis = 1, keys= "created_at", ignore_index=True)
 
-    over15min_bot = bot_used.groupby(pd.Grouper(freq='15T')).count()
-    over15min_bot['cum_sum'] = over15min_bot['hashtag'].cumsum()
-    # over15min_bot = over15min_bot.loc[over15min_timeline_start:over15min_timeline_end]
+humans[0] = pd.to_datetime(humans.iloc[:,0])
+humans.set_index('created_at', inplace=True, drop= False)
+
+bot[0] = pd.to_datetime(bot.iloc[:,0])
+bot.set_index([0], inplace=True, drop= False)
+
+text["created_at"] = pd.to_datetime(text['created_at'])
+#constructing segments to be used on x axis
+text.
+
+timeline = text.groupby(pd.Grouper(freq='15T')).count() #group all occurences by segments of 20mins (the useful part is grouping our overall timeline) | .count() isn't neccessary here?
+
+over15min_human = human_used.groupby(pd.Grouper(freq='15T')).count() #group all human used hashtag occurances by segments of (# before 't') mins
+over15min_human['cum_sum'] = over15min_human['hashtag'].cumsum()
+# over15min_human = over15min_human.loc[over15min_timeline_start:over15min_timeline_end]
+
+over15min_bot = bot_used.groupby(pd.Grouper(freq='15T')).count()
+over15min_bot['cum_sum'] = over15min_bot['hashtag'].cumsum()
+# over15min_bot = over15min_bot.loc[over15min_timeline_start:over15min_timeline_end]
 
 
 
-    # graph
-    f = plt.figure() #saves figure to be shown into 'f', allows for exporting later
-    #plt.plot(over15min_timeline.index, over15min_human.hashtag, label = "human") #plot using human occurance counts as y, and the overall timeline segments as x
-    plt.plot(over15min_timeline.index, over15min_human.cum_sum, label="human")#FOR CUMULATIVE
-    #plt.plot(over15min_timeline.index, over15min_bot.hashtag, label = "bot")
-    plt.plot(over15min_timeline.index, over15min_bot.cum_sum, label="bot")#FOR CUMULATIVE
+# graph
+f = plt.figure() #saves figure to be shown into 'f', allows for exporting later
+#plt.plot(over15min_timeline.index, over15min_human.hashtag, label = "human") #plot using human occurance counts as y, and the overall timeline segments as x
+plt.plot(over15min_timeline.index, over15min_human.cum_sum, label="human")#FOR CUMULATIVE
+#plt.plot(over15min_timeline.index, over15min_bot.hashtag, label = "bot")
+plt.plot(over15min_timeline.index, over15min_bot.cum_sum, label="bot")#FOR CUMULATIVE
 
 
-    plt.legend() #introduces a legend into the figure
-    plt.title(str(hashtag_in_question)) #gives graph a title - the hashtag in question
-    plt.xlabel("time") #labels the x axis
-    plt.ylabel("occurrence count")
-    plt.minorticks_on()
+plt.legend() #introduces a legend into the figure
+plt.title(str(hashtag_in_question)) #gives graph a title - the hashtag in question
+plt.xlabel("time") #labels the x axis
+plt.ylabel("occurrence count")
+plt.minorticks_on()
 
 
-    plt.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
-    plt.grid(b=True, which='major', color='#999999', linestyle='-', alpha=0.5)
-    f.set_figwidth(18) #sets size, too small makes precise visual analysis more difficult, hence the bigger size
-    f.set_figheight(9)
+plt.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
+plt.grid(b=True, which='major', color='#999999', linestyle='-', alpha=0.5)
+f.set_figwidth(18) #sets size, too small makes precise visual analysis more difficult, hence the bigger size
+f.set_figheight(9)
 
-    plt.savefig((str(hashtag_in_question)+'.png')) #save figure
+plt.savefig((str(hashtag_in_question)+'.png')) #save figure
 
-    i += 1 #reset loop
+i += 1 #reset loop
 
 
 ###########################################
@@ -503,6 +520,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import vaderSentiment
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import scipy.stats as stats
 
 hoi_list = ['urineidiot','unvaccinated','vaccination','trumpvirus','quebec','freedom',
             'science','canada','america','deltacron','vaccinemandates','funny',
@@ -584,21 +602,50 @@ split_cols = split_cols.drop(columns="sentiment")
 split_cols['posted_at'] = pd.to_datetime(split_cols['posted_at']) #sets value to datetime index
 both_used = split_cols[["posted_at","class","hashtag","compound"]]
 
-t_test = pd.DataFrame()
+kruskal_results = pd.DataFrame()
+
 i=0
-while i< len(hoi_list):
+while i< len(hoi_list): #Comparing means of hashtags USE SIGN TEST? COMPARE HUMAN ONLY TO HUMAN + BOTS
+# 1,2,3,4 6,7,~8,10,11,12 (indeces) is not feasible statistically
+    #kruskal_temp = pd.DataFrame()
     current_hashtag = both_used[both_used["hashtag"] == hoi_list[i]]
 
     bot_used = current_hashtag.where(~(current_hashtag['class'] == 'human'))
+    bot_used = bot_used[bot_used["hashtag"] == hoi_list[i]]
     human_used = current_hashtag.where(~(current_hashtag['class'] != 'human'))
+    human_used = human_used[human_used["hashtag"] == hoi_list[i]]
 
-    t_test_temp = pd.DataFrame()
-    test = rp.ttest(group1= bot_used['compound'], group1_name= "bot",
-        group2= human_used["compound"], group2_name= "human")
-    t_test_temp = t_test_temp.append(test)
-    t_test_temp = t_test_temp.set_index(bot_used['hashtag'].iloc[0:13])
-    t_test = t_test.append(t_test_temp)
+    data = [current_hashtag["compound"],bot_used["compound"],human_used["compound"]]
 
-    i = i+1
+    fig = plt.figure(figsize=(5, 1.3))
+    ax = fig.add_subplot(111)
 
-t_test.to_csv('hoi_t-tests.csv')
+    # Creating axes instance
+    #ax = fig.add_axes([0,0,1, 1])
+    # Creating plot
+    bp = ax.boxplot(data, patch_artist = False,
+                    vert = 0, showmeans = True)
+    ax.set_yticklabels(['combined','bot', 'human'])
+
+    plt.title("#"+str(hoi_list[i]))
+    # Removing top axes and right axes
+    # ticks
+    ax.get_xaxis().tick_bottom()
+    ax.get_yaxis().tick_left()
+    plt.subplots_adjust(bottom=0.25, top=0.75, left=0.17)
+    # show plot
+    plt.show()
+    plt.savefig("boxplot_"+(str(hoi_list[i])+'.png'))
+    # show plot
+    i +=1
+    data = []
+    #check distributions
+    # plt.hist(human_used['compound'], bins=20)
+    # plt.hist(bot_used['compound'], bins=20)
+    # plt.show()
+
+
+
+
+
+
